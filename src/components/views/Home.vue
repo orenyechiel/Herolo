@@ -5,44 +5,68 @@
         type="text"
         class="form-control"
         v-model="searchField"
+        placeholder="Search City"
         @input="auto()"
+        @focusin="showSuggestionsList = true"
       />
     </div>
-    <div class="autocomplete" v-show="suggestionsList.length > 1">
-      <ul class="list-group">
+    <div class="autocomplete" v-show="showSuggestionsList">
+      <ul class="list-group" v-if="searchField.length > 1">
         <li
-          class="
-            list-group-item
-            d-flex
-            justify-content-between
-            align-items-start
-          "
+          class="list-group-item d-flex justify-content-between align-items-start"
           v-for="suggestion in suggestionsList"
           :key="suggestion.Key"
-          @click="fetchNewLocation(suggestion.Key)"
+          @click="
+            fetchNewLocation(suggestion.Key);
+            fetchCurrentCondition(suggestion.Key);
+            changeCurrentConditionCity(suggestion.LocalizedName);
+            isFavorite(suggestion.Key)
+            showSuggestionsList = false;
+          "
         >
-          <div class="ms-2 me-auto">
+          <div class="ms-2 me-auto location-name">
             <div class="fw-bold">{{ suggestion.LocalizedName }}</div>
             {{ suggestion.AdministrativeArea.LocalizedName }}
           </div>
-          <span class="badge bg-primary rounded-pill">{{
-            suggestion.Country.LocalizedName
-          }}</span>
+          <span class="badge bg-primary rounded-pill">
+            {{ suggestion.Country.LocalizedName }}
+          </span>
         </li>
       </ul>
     </div>
   </div>
 
   <div class="main-panel">
-    <button
-      type="button"
-      class="btn btn-success"
-      @click="addFavorite(getCurrentLocationCode)"
-    >
-      Add to Favorites
-    </button>
+    <div class="d-md-flex justify-content-between align-items-center mb-5">
+      <CurrentCondition
+        v-if="getCurrentCondition"
+        :city-name="getCurrentConditionCity"
+        :value="getCurrentCondition.Temperature.Metric.Value"
+        :unit="getCurrentCondition.Temperature.Metric.Unit"
+      />
 
-    <h2 class="text-center">{{ getCurrentLocationDetails.Text }}</h2>
+      <button
+        type="button"
+        class="btn btn-success ms-auto"
+        @click="addFavorite({
+          id: getCurrentLocationCode,
+          city: getCurrentConditionCity,
+          temp: getCurrentCondition.Temperature.Metric.Value,
+          unit: getCurrentCondition.Temperature.Metric.Unit,
+          status: getCurrentCondition.WeatherText
+        })"
+      >
+        Add this Location to Favorites
+      </button>
+      <span class="badge rounded-pill bg-info text-dark ms-3" 
+            v-if="isCurrentFavorite">Favorite</span>
+      
+    </div>
+
+    <div class="headlines text-center">
+      <h1>{{ getCurrentCondition.WeatherText }}</h1>
+      <h2>This week: {{ getCurrentLocationDetails.Text }}</h2>
+    </div>
 
     <ul class="forecast">
       <li v-for="day in getCurrentLocation" :key="day.Date">
@@ -65,15 +89,20 @@
 <script>
 import axios from "axios";
 import formatDate from "@/mixing/formatDate";
-import { mapActions, mapGetters } from "vuex";
+import { mapActions, mapGetters, mapMutations } from "vuex";
+
+import CurrentCondition from "@/components/CurrentCondition.vue";
 
 export default {
   name: "HomePage",
   mixins: [formatDate],
+  components: { CurrentCondition },
   data() {
     return {
       searchField: "",
       suggestionsList: [],
+      showSuggestionsList: false,
+      isCurrentFavorite: false
     };
   },
   computed: {
@@ -82,28 +111,41 @@ export default {
       "getCurrentLocationCode",
       "getCurrentLocation",
       "getCurrentLocationDetails",
+      "getCurrentCondition",
+      "getCurrentConditionCity",
+      "getFavorites",
     ]),
   },
   methods: {
-    ...mapActions(["fetchNewLocation"]),
+    ...mapMutations(["changeCurrentConditionCity", "addFavorite"]),
+    ...mapActions(["fetchNewLocation", "fetchCurrentCondition"]),
     auto() {
       axios
         .get(
           `https://cors-anywhere.herokuapp.com/http://dataservice.accuweather.com/locations/v1/cities/autocomplete?apikey=${this.getApiKey}&q=${this.searchField}`
         )
         .then((res) => {
-          console.log(res);
           const data = res.data.sort();
           this.suggestionsList = data;
         })
         .catch((error) => {
-          console.log("my", error);
+          console.log("err: ", error);
         });
     },
+    isFavorite(id) {
+      const index = this.getFavorites.findIndex(i => i.id === id)
+      if(index === -1) {
+        this.isCurrentFavorite = false
+      } else {
+        this.isCurrentFavorite = true
+      }
+    }
   },
   created() {
     // fetching Tel aviv at first
-    this.fetchNewLocation(215854);
+    this.fetchNewLocation(this.getCurrentLocationCode);
+    this.fetchCurrentCondition(this.getCurrentLocationCode);
+    this.isFavorite(this.getCurrentLocationCode)
   },
 };
 </script>
@@ -127,6 +169,13 @@ export default {
       &:nth-child(n + 8) {
         display: none !important;
       }
+      &:hover,
+      &:focus {
+        background-color: #3d7576;
+        .location-name {
+        color: white;
+        }
+      }
     }
   }
 }
@@ -136,6 +185,18 @@ export default {
   border-radius: 12px;
   padding: 30px 25px 40px;
   margin-top: 35px;
+
+  .headlines {
+    width: 80%;
+    margin: 0 auto;
+    h1 {
+      margin-bottom: 25px;
+    }
+    h2 {
+      font-size: 20px;
+    }
+  }
+
   .forecast {
     margin-top: 40px;
     padding: 10px 0;

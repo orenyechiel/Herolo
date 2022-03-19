@@ -7,13 +7,18 @@
     aria-hidden="true"
   >
     <div class="modal-dialog">
+        <button type="button" class="btn-close"></button>
       <div class="modal-content">
-        <h5>We having some trouble fetching date, please try later</h5>
+        <h5>{{msg}}</h5>
       </div>
     </div>
   </div>
 </template>
 <script>
+export default {
+  name: "ErrorModal",
+  props: ['msg']
+}
 </script>
 <style lang="scss">
 .modal-fade {

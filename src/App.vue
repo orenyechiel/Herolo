@@ -1,7 +1,7 @@
 <template>
   <HeaderTop />
   <MainLayout />
-  <ErrorModal v-if="isErrorFromServer"/>
+  <ErrorModal :msg="errorMsg" v-if="isErrorFromServer"/>
 </template>
 
 <script>
@@ -13,7 +13,9 @@ import MainLayout from "./components/MainLayout.vue";
 export default {
   name: "App",
   data() {
-    return {};
+    return {
+      errorMsg: "We having some trouble fetching data, please try later"
+    };
   },
   components: {
     MainLayout,
