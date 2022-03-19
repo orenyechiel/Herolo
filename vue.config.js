@@ -1,5 +1,7 @@
 module.exports = {
-    base: "/oren-pesachov-17-3-22/",
+    publicPath: process.env.NODE_ENV === 'production'
+    ? '/oren-pesachov-17-3-22/'
+    : '/',
     css: {
         loaderOptions: {
             sass: {
